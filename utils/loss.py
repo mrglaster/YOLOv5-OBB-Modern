@@ -110,7 +110,7 @@ class ComputeLoss:
             BCEtheta = FocalLoss(BCEtheta, g)
 
         det = model.module.model[-1] if is_parallel(model) else model.model[-1]  # Detect() module
-        self.stride = det.stride # tensor([8., 16., 32., ...])
+        self.stride = det.stride  # tensor([8., 16., 32., ...])
         self.balance = {3: [4.0, 1.0, 0.4]}.get(det.nl, [4.0, 1.0, 0.25, 0.06, 0.02])  # P3-P7
         # self.ssi = list(det.stride).index(16) if autobalance else 0  # stride 16 index
         self.ssi = list(self.stride).index(16) if autobalance else 0  # stride 16 index
@@ -126,7 +126,7 @@ class ComputeLoss:
             targets (tensor): (n_gt_all_batch, [img_index clsid cx cy l s theta gaussian_θ_labels])
 
         Return：
-            total_loss * bs (tensor): [1] 
+            total_loss * bs (tensor): [1]
             torch.cat((lbox, lobj, lcls, ltheta)).detach(): [4]
         """
         device = targets.device
@@ -146,7 +146,7 @@ class ComputeLoss:
 
                 # Regression
                 pxy = ps[:, :2].sigmoid() * 2 - 0.5
-                pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anchors[i] # featuremap pixel
+                pwh = (ps[:, 2:4].sigmoid() * 2) ** 2 * anchors[i]  # featuremap pixel
                 pbox = torch.cat((pxy, pwh), 1)  # predicted box
                 iou = bbox_iou(pbox.T, tbox[i], x1y1x2y2=False, CIoU=True)  # iou(prediction, target)
                 lbox += (1.0 - iou).mean()  # iou loss
@@ -166,9 +166,9 @@ class ComputeLoss:
                     t[range(n), tcls[i]] = self.cp
                     # lcls += self.BCEcls(ps[:, 5:], t)  # BCE
                     lcls += self.BCEcls(ps[:, 5:class_index], t)  # BCE
-                
+
                 # theta Classification by Circular Smooth Label
-                t_theta = tgaussian_theta[i].type(ps.dtype) # target theta_gaussian_labels
+                t_theta = tgaussian_theta[i].type(ps.dtype)  # target theta_gaussian_labels
                 ltheta += self.BCEtheta(ps[:, class_index:], t_theta)
 
                 # Append targets to text file
@@ -218,20 +218,20 @@ class ComputeLoss:
         targets = torch.cat((targets.repeat(na, 1, 1), ai[:, :, None]), 2)  # append anchor indices
 
         g = 0.5  # bias
-        off = torch.tensor([[0, 0], # tensor: (5, 2)
+        off = torch.tensor([[0, 0],  # tensor: (5, 2)
                             [1, 0], [0, 1], [-1, 0], [0, -1],  # j,k,l,m
                             # [1, 1], [1, -1], [-1, 1], [-1, -1],  # jk,jm,lk,lm
                             ], device=targets.device).float() * g  # offsets
 
         for i in range(self.nl):
-            anchors = self.anchors[i] 
+            anchors, shape = self.anchors[i], p[i].shape
             # gain[2:6] = torch.tensor(p[i].shape)[[3, 2, 3, 2]]  # xyxy gain=[1, 1, w, h, w, h, 1, 1]
             feature_wh[0:2] = torch.tensor(p[i].shape)[[3, 2]]  # xyxy gain=[w_f, h_f]
 
             # Match targets to anchors
             # t = targets * gain # xywh featuremap pixel
-            t = targets.clone() # (na, n_gt_all_batch, c+1)
-            t[:, :, 2:6] /= self.stride[i] # xyls featuremap pixel
+            t = targets.clone()  # (na, n_gt_all_batch, c+1)
+            t[:, :, 2:6] /= self.stride[i]  # xyls featuremap pixel
             if nt:
                 # Matches
                 r = t[:, :, 4:6] / anchors[:, None]  # edge_ls ratio, torch.size(na, n_gt_all_batch, 2)
@@ -245,11 +245,11 @@ class ComputeLoss:
                 gxi = feature_wh[[0, 1]] - gxy  # inverse
                 j, k = ((gxy % 1 < g) & (gxy > 1)).T
                 l, m = ((gxi % 1 < g) & (gxi > 1)).T
-                j = torch.stack((torch.ones_like(j), j, k, l, m)) # (5, n_filter1)
-                t = t.repeat((5, 1, 1))[j] # (n_filter1, c+1) -> (5, n_filter1, c+1) -> (n_filter2, c+1)
-                offsets = (torch.zeros_like(gxy)[None] + off[:, None])[j] # (5, n_filter1, 2) -> (n_filter2, 2)
+                j = torch.stack((torch.ones_like(j), j, k, l, m))  # (5, n_filter1)
+                t = t.repeat((5, 1, 1))[j]  # (n_filter1, c+1) -> (5, n_filter1, c+1) -> (n_filter2, c+1)
+                offsets = (torch.zeros_like(gxy)[None] + off[:, None])[j]  # (5, n_filter1, 2) -> (n_filter2, 2)
             else:
-                t = targets[0] # (n_gt_all_batch, c+1)
+                t = targets[0]  # (n_gt_all_batch, c+1)
                 offsets = 0
 
             # Define, t (tensor): (n_filter2, [img_index, clsid, cx, cy, l, s, theta, gaussian_θ_labels, anchor_index])
@@ -264,7 +264,8 @@ class ComputeLoss:
             # Append
             a = t[:, -1].long()  # anchor indices 取整
             # indices.append((b, a, gj.clamp_(0, gain[3] - 1), gi.clamp_(0, gain[2] - 1)))  # image, anchor, grid indices
-            indices.append((b, a, gj.clamp_(0, feature_wh[1] - 1), gi.clamp_(0, feature_wh[0] - 1)))  # image, anchor, grid indices
+            #indices.append((b, a, gj.clamp_(0, feature_wh[1] - 1), gi.clamp_(0, feature_wh[0] - 1)))
+            indices.append((b, a, gj.clamp_(0, shape[2] - 1), gi.clamp_(0, shape[3] - 1)))
             tbox.append(torch.cat((gxy - gij, gwh), 1))  # box
             anch.append(anchors[a])  # anchors
             tcls.append(c)  # class
@@ -272,4 +273,4 @@ class ComputeLoss:
             tgaussian_theta.append(gaussian_theta_labels)
 
         # return tcls, tbox, indices, anch
-        return tcls, tbox, indices, anch, tgaussian_theta #, ttheta
+        return tcls, tbox, indices, anch, tgaussian_theta  # , ttheta
