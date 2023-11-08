@@ -447,7 +447,7 @@ class LoadImagesAndLabels(Dataset):
         self.img_files = list(cache.keys())  # update
         self.label_files = img2label_paths(cache.keys())  # update
         n = len(shapes)  # number of images
-        bi = np.floor(np.arange(n) / batch_size).astype(np.int)  # batch index
+        bi = np.floor(np.arange(n) / batch_size).astype(np.int_)  # batch index
         nb = bi[-1] + 1  # number of batches
         self.batch = bi  # batch index of image
         self.n = n
@@ -485,11 +485,11 @@ class LoadImagesAndLabels(Dataset):
                 ari = ar[bi == i]
                 mini, maxi = ari.min(), ari.max()
                 if maxi < 1: # batch图像高宽比均小于1时, shape=[h/w, 1] = [h_ratio, w_ratio]
-                    shapes[i] = [maxi, 1] 
+                    shapes[i] = [maxi, 1]
                 elif mini > 1: # batch图像高宽比均大于1时, shape=[1, w/h] = [h_ratio, w_ratio]
                     shapes[i] = [1, 1 / mini]
 
-            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int) * stride # (nb, [h_rect, w_rect])
+            self.batch_shapes = np.ceil(np.array(shapes) * img_size / stride + pad).astype(np.int_) * stride # (nb, [h_rect, w_rect])
 
         # Cache images into memory for faster training (WARNING: large datasets may exceed system RAM)
         self.imgs, self.img_npy = [None] * n, [None] * n
@@ -527,7 +527,7 @@ class LoadImagesAndLabels(Dataset):
                 ne += ne_f
                 nc += nc_f
                 if im_file:
-                    x[im_file] = [l, shape, segments] 
+                    x[im_file] = [l, shape, segments]
                 if msg:
                     msgs.append(msg)
                 pbar.desc = f"{desc}{nf} found, {nm} missing, {ne} empty, {nc} corrupted"
@@ -564,7 +564,7 @@ class LoadImagesAndLabels(Dataset):
         Returns:
             img (tensor): (3, height, width), RGB
             labels_out (tensor): (n, [None clsid cx cy l s theta gaussian_θ_labels]) θ∈[-pi/2, pi/2)
-            img_file (str): img_dir 
+            img_file (str): img_dir
             shapes : None or [(h_raw, w_raw), (hw_ratios, wh_paddings)], for COCO mAP rescaling
         '''
         index = self.indices[index]  # linear, shuffled, or image_weights
@@ -582,7 +582,7 @@ class LoadImagesAndLabels(Dataset):
 
         else:
             # Load image and label
-            img, (h0, w0), (h, w), img_label = load_image_label(self, index) 
+            img, (h0, w0), (h, w), img_label = load_image_label(self, index)
 
             # Letterbox
             shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape [h_rect, w_rect]
@@ -590,7 +590,7 @@ class LoadImagesAndLabels(Dataset):
             shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling [(h_raw, w_raw), (hw_ratios, wh_paddings)]
 
             labels = img_label.copy() # labels (array): (num_gt_perimg, [cls_id, poly])
-            if labels.size:  
+            if labels.size:
                 # labels[:, 1:] = xywhn2xyxy(labels[:, 1:], ratio[0] * w, ratio[1] * h, padw=pad[0], padh=pad[1])
                 labels[:, [1, 3, 5, 7]] = img_label[:, [1, 3, 5, 7]] * ratio[0] + pad[0]
                 labels[:, [2, 4, 6, 8]] = img_label[:, [2, 4, 6, 8]] * ratio[1] + pad[1]
@@ -636,9 +636,9 @@ class LoadImagesAndLabels(Dataset):
             # nl = len(labels)  # update after cutout
         if nl:
         # *[clsid poly] to *[clsid cx cy l s theta gaussian_θ_labels] θ∈[-pi/2, pi/2) non-normalized
-            rboxes, csl_labels  = poly2rbox(polys=labels[:, 1:], 
-                                            num_cls_thata=hyp['cls_theta'] if hyp else 180, 
-                                            radius=hyp['csl_radius'] if hyp else 6.0, 
+            rboxes, csl_labels  = poly2rbox(polys=labels[:, 1:],
+                                            num_cls_thata=hyp['cls_theta'] if hyp else 180,
+                                            radius=hyp['csl_radius'] if hyp else 6.0,
                                             use_pi=True, use_gaussian=True)
             labels_obb = np.concatenate((labels[:, :1], rboxes, csl_labels), axis=1)
             labels_mask = (rboxes[:, 0] >= 0) & (rboxes[:, 0] < img.shape[1]) \
@@ -646,7 +646,7 @@ class LoadImagesAndLabels(Dataset):
                         & (rboxes[:, 2] > 5) | (rboxes[:, 3] > 5)
             labels_obb = labels_obb[labels_mask]
             nl = len(labels_obb)  # update after filter
-        
+
         if hyp:
             c_num = 7 + hyp['cls_theta'] # [index_of_batch clsid cx cy l s theta gaussian_θ_labels]
         else:
@@ -915,7 +915,7 @@ def extract_boxes(path='../datasets/coco128'):  # from utils.datasets import *; 
                     b = x[1:] * [w, h, w, h]  # box
                     # b[2:] = b[2:].max()  # rectangle to square
                     b[2:] = b[2:] * 1.2 + 3  # pad
-                    b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(np.int)
+                    b = xywh2xyxy(b.reshape(-1, 4)).ravel().astype(np.int_)
 
                     b[[0, 2]] = np.clip(b[[0, 2]], 0, w)  # clip boxes outside of image
                     b[[1, 3]] = np.clip(b[[1, 3]], 0, h)
